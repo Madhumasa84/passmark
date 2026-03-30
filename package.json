@@ -1,7 +1,7 @@
 {
   "name": "passmark",
-  "version": "1.0.0",
-  "description": "AI agents that test user flows like a human",
+  "version": "1.0.1",
+  "description": "The open-source AI framework for regression testing.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
