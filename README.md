@@ -19,7 +19,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_GENERATIVE_AI_API_KEY=AIza...
 ```
 
-Alternatively, you can use an AI gateway like Vercel AI Gateway to route requests to multiple providers without managing individual API keys. If you choose this option, set `AI_GATEWAY_API_KEY` instead. Note: we support only Vercel AI Gateway at the moment, but we're planning to add support for other gateways in the future.
+Alternatively, you can use an AI gateway like Vercel AI Gateway or OpenRouter to route requests to multiple providers without managing individual API keys. If you choose this option, set `AI_GATEWAY_API_KEY` (for Vercel) or `OPENROUTER_API_KEY` (for OpenRouter) instead.
 
 Set your Playwright project to read `.env` by adding the following to `playwright.config.ts`  (after `import { defineConfig, devices } from '@playwright/test';`):
 
@@ -61,14 +61,15 @@ test("Shopping cart tests", async ({ page }) => {
 });
 ```
 
-If you are using Vercel AI Gateway, you can add the following to the above code:
+If you are using an AI gateway, you can add the following to the above code:
 
 ```typescript
 import { runSteps, configure } from "passmark";
 
 configure({
   ai: {
-    gateway: "vercel" // Make sure to set AI_GATEWAY_API_KEY in your .env file
+    gateway: "vercel" // or "openrouter"
+    // Make sure to set AI_GATEWAY_API_KEY (Vercel) or OPENROUTER_API_KEY (OpenRouter) in your .env file
   }
 });
 ```
@@ -87,7 +88,7 @@ After the test completes, you can run `npx playwright show-report` to see a deta
 - **Multi-Model Assertion Engine** — Consensus-based validation using Claude and Gemini, with an arbiter model to resolve disagreements
 - **Redis-Based Step Caching** — Cache-first execution with AI fallback and automatic self-healing when cached steps fail
 - **Configurable AI Models** — 8 dedicated model slots for step execution, assertions, extraction, and more
-- **AI Gateway Support** — Route requests through Vercel AI Gateway or connect directly to provider SDKs
+- **AI Gateway Support** — Route requests through Vercel AI Gateway, OpenRouter, or connect directly to provider SDKs
 - **Dynamic Placeholders** — Inject values at runtime with `{{run.*}}`, `{{global.*}}`, `{{data.*}}`, and `{{email.*}}` expressions for repeatable and data-driven tests
 - **Email Extraction** — Pluggable email provider interface with a built-in emailsink provider
 - **AI-Powered Data Extraction** — Extract structured values from page snapshots and URLs using AI
@@ -152,7 +153,7 @@ import { configure } from "passmark";
 
 configure({
   ai: {
-    gateway: "none", // "none" (default) or "vercel"
+    gateway: "none", // "none" (default), "vercel", or "openrouter"
     models: {
       stepExecution: "google/gemini-3-flash",
       utility: "google/gemini-2.5-flash",
@@ -170,6 +171,7 @@ configure({
 | `ANTHROPIC_API_KEY` | Yes | - | Anthropic API key for Claude models |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Yes | - | Google API key for Gemini models |
 | `AI_GATEWAY_API_KEY` | If gateway=vercel | - | Vercel AI Gateway API key |
+| `OPENROUTER_API_KEY` | If gateway=openrouter | - | OpenRouter API key |
 | `AXIOM_TOKEN` | No | - | Axiom token for OpenTelemetry tracing |
 | `AXIOM_DATASET` | No | - | Axiom dataset for trace storage |
 | `PASSMARK_LOG_LEVEL` | No | `info` | Log level: `debug`, `info`, `warn`, `error`, `silent` |
