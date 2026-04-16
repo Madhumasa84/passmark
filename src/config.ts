@@ -22,18 +22,21 @@ export type ModelConfig = {
   assertionPrimary?: string;
   /** Model for assertions (secondary). Default: google/gemini-3-flash */
   assertionSecondary?: string;
+  /** Array of models to use for consensus assertions. When provided, overrides assertionPrimary/assertionSecondary */
+  assertionModels?: string[];
   /** Model for assertion arbiter. Default: google/gemini-3.1-pro-preview */
   assertionArbiter?: string;
   /** Model for data extraction, wait conditions, and lightweight tasks. Default: google/gemini-2.5-flash */
   utility?: string;
 };
 
-export const DEFAULT_MODELS: Required<ModelConfig> = {
+export const DEFAULT_MODELS: Required<Omit<ModelConfig, 'assertionModels'>> & Pick<ModelConfig, 'assertionModels'> = {
   stepExecution: "google/gemini-3-flash",
   userFlowLow: "google/gemini-3-flash",
   userFlowHigh: "google/gemini-3.1-pro-preview",
   assertionPrimary: "anthropic/claude-haiku-4.5",
   assertionSecondary: "google/gemini-3-flash",
+  assertionModels: undefined,
   assertionArbiter: "google/gemini-3.1-pro-preview",
   utility: "google/gemini-2.5-flash",
 };
@@ -58,14 +61,46 @@ let globalConfig: Config = {};
  *
  * @example
  * ```typescript
+ * // Using primary/secondary models (backward compatible)
  * configure({
- *   ai: { gateway: "none", models: { stepExecution: "google/gemini-3-flash" } },
- *   email: { domain: "test.com", extractContent: async ({ email, prompt }) => "..." },
+ *   ai: { 
+ *     gateway: "none", 
+ *     models: { 
+ *       assertionPrimary: "anthropic/claude-haiku-4.5",
+ *       assertionSecondary: "google/gemini-3-flash"
+ *     } 
+ *   },
+ * });
+ * 
+ * // Using multiple models array (new flexible approach)
+ * configure({
+ *   ai: { 
+ *     gateway: "openrouter", 
+ *     models: { 
+ *       assertionModels: [
+ *         "anthropic/claude-haiku-4.5",
+ *         "google/gemini-3-flash",
+ *         "meta-llama/llama-3.1-8b-instruct"
+ *       ],
+ *       assertionArbiter: "google/gemini-3.1-pro-preview"
+ *     } 
+ *   },
  * });
  * ```
  */
 export function configure(config: Config) {
   globalConfig = { ...globalConfig, ...config };
+  
+  // Validate assertion model configuration
+  const models = globalConfig.ai?.models;
+  if (models) {
+    const assertionModels = getAssertionModelsList(models);
+    if (assertionModels.length < 2) {
+      console.warn(
+        'Passmark: At least 2 assertion models are recommended for reliable consensus validation.'
+      );
+    }
+  }
 }
 
 /**
@@ -81,8 +116,44 @@ export function getConfig(): Config {
  * @param key - The model use case key (e.g. "stepExecution", "utility")
  * @returns The model identifier string (e.g. "google/gemini-3-flash")
  */
-export function getModelId(key: keyof ModelConfig): string {
+export function getModelId(key: keyof Omit<ModelConfig, 'assertionModels'>): string {
   return getConfig().ai?.models?.[key] ?? DEFAULT_MODELS[key];
+}
+
+/**
+ * Returns the list of assertion models from configuration.
+ * Prioritizes assertionModels array, falls back to [assertionPrimary, assertionSecondary].
+ *
+ * @param models - The model configuration
+ * @returns Array of model identifiers for assertions
+ */
+export function getAssertionModelsList(models?: ModelConfig): string[] {
+  const configModels = models ?? getConfig().ai?.models;
+  
+  if (!configModels) {
+    return [DEFAULT_MODELS.assertionPrimary, DEFAULT_MODELS.assertionSecondary];
+  }
+  
+  // Prefer the new assertionModels array if provided
+  if (configModels.assertionModels && configModels.assertionModels.length > 0) {
+    return configModels.assertionModels;
+  }
+  
+  // Fall back to primary/secondary for backward compatibility
+  const models_list: string[] = [];
+  if (configModels.assertionPrimary) {
+    models_list.push(configModels.assertionPrimary);
+  }
+  if (configModels.assertionSecondary) {
+    models_list.push(configModels.assertionSecondary);
+  }
+  
+  // If nothing configured, use defaults
+  if (models_list.length === 0) {
+    return [DEFAULT_MODELS.assertionPrimary, DEFAULT_MODELS.assertionSecondary];
+  }
+  
+  return models_list;
 }
 
 /** @internal Reset config to empty state. Used for testing only. */
